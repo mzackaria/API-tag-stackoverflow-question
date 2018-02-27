@@ -57,6 +57,11 @@ def index(id_film):
             same_films.remove(f)
             result.append(f.dict_())
         return  jsonify({"results":result})
+
+
+@app.route('/recommend/')
+def index():
+        return "hello"
     
 if __name__ == "__main__":
         app.run()
