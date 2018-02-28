@@ -60,7 +60,7 @@ def index(id_film):
 
 
 @app.route('/recommend/')
-def index():
+def ind():
         return "hello"
     
 if __name__ == "__main__":
