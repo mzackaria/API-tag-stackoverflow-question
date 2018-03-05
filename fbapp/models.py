@@ -56,7 +56,7 @@ def index(id_film):
             f = random.choice(same_films)
             same_films.remove(f)
             result.append(f.dict_())
-        return  jsonify({"results":result})
+        return  jsonify({"film":film.dict_(), "results":result})
 
 
 @app.route('/recommend/')
