@@ -39,7 +39,7 @@ def init_db():
     for i in range(0,len(result.values)):
         ident = result.iloc[i,0].astype(str)
         cluster = result.iloc[i,1].astype(str)
-        title = result.iloc[i,2]
+        title = result.iloc[i,2].replace(u"\u00A0", "")
         db.session.add(Film(ident,cluster,title))
     db.session.commit()
     lg.warning('Database initialized!')
@@ -51,6 +51,7 @@ def index(id_film):
         if film is None:
             return "Wrong id > " + str(id_film)
         same_films = Film.query.filter_by(cluster=film.cluster).all()
+        same_films.remove(film)
         result = []
         for i in range(0,5):
             f = random.choice(same_films)
