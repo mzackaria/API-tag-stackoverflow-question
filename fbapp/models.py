@@ -4,65 +4,67 @@ Created on Mon Feb 26 13:34:54 2018
 
 @author: zakis
 """
-from flask_sqlalchemy import SQLAlchemy
-import logging as lg
-from .get_result import result
-from flask import Flask, jsonify
-import random
+from .get_result import lr, vectorizer, multilabel_binarizer
+from flask import Flask, jsonify, request
+import numpy as np
+import re
+from bs4 import BeautifulSoup 
+from nltk.corpus import stopwords    
+from nltk.stem.porter import PorterStemmer 
 
 app = Flask(__name__)
-
-# Config options - Make sure you created a 'config.py' file.
-app.config.from_object('config')
-
-# Create database connection object
-db = SQLAlchemy(app)
-
-
-class Film(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    ident = db.Column(db.String(200), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    cluster = db.Column(db.String(200), nullable=False)
-
-    def __init__(self, ident, cluster, title):
-        self.ident = ident
-        self.title = title
-        self.cluster = cluster
     
-    def dict_(self):
-        return {"id":self.ident,"title":self.title}
-
-def init_db():
-    db.drop_all()
-    db.create_all()
-    for i in range(0,len(result.values)):
-        ident = result.iloc[i,0].astype(str)
-        cluster = result.iloc[i,1].astype(str)
-        title = result.iloc[i,2].replace(u"\u00A0", "")
-        db.session.add(Film(ident,cluster,title))
-    db.session.commit()
-    lg.warning('Database initialized!')
-     
-    
-@app.route('/recommend/<id_film>', methods = ['GET'])
-def index(id_film):
-        film = Film.query.filter_by(ident=str(id_film)).first()
-        if film is None:
-            return "Wrong id > " + str(id_film)
-        same_films = Film.query.filter_by(cluster=film.cluster).all()
-        same_films.remove(film)
-        result = []
-        for i in range(0,5):
-            f = random.choice(same_films)
-            same_films.remove(f)
-            result.append(f.dict_())
-        return  jsonify({"film":film.dict_(), "results":result})
+@app.route('/predict_tags', methods = ['GET'])
+def index():
+    text = request.args.get('question')
+    review_cleaned = review_to_words(text)
+    review_vectorized = vectorizer.transform([review_cleaned]).toarray()
+    y_pred = lr.predict(review_vectorized).toarray()
+    x = np.insert(y_pred, 29, 0)
+    tags_pred = multilabel_binarizer.inverse_transform(np.array(x).reshape(1,51))
+    tags_pred = tags_pred[0]
+    result = ''
+    for tag in tags_pred:
+        result += tag + ', '
+    if len(result) > 0:
+        result = result[:len(result)-2]
+    return  jsonify({"question":text, "tags":result})
 
 
-@app.route('/recommend/')
+@app.route('/')
 def ind():
         return "hello"
+    
+    
+#defining the function that will be used to create the dictionnary
+def review_to_words( raw_review ):
+    # Function to convert a raw review to a string of words
+    # The input is a single string (a raw movie review), and 
+    # the output is a single string (a preprocessed movie review)
+    #
+    # 1. Remove HTML
+    review_text = BeautifulSoup(raw_review).get_text() 
+    #
+    # 2. Remove non-letters        
+    letters_only = re.sub("[^a-zA-Z]", " ", review_text) 
+    #
+    # 3. Convert to lower case, split into individual words
+    words = letters_only.lower().split()      
+    #
+    # 4. Stem all the words
+    ps = PorterStemmer()
+    words = [ps.stem(word) for word in words]                       
+    #
+    # 5. In Python, searching a set is much faster than searching
+    #   a list, so convert the stop words to a set
+    stops = set(stopwords.words("english"))                  
+    # 
+    # 6. Remove stop words
+    meaningful_words = [w for w in words if not w in stops]   
+    #
+    # 7. Join the words back into one string separated by space, 
+    # and return the result.
+    return( " ".join( meaningful_words )) 
     
 if __name__ == "__main__":
         app.run()

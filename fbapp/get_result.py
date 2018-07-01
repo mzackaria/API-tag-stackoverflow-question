@@ -1,3 +1,12 @@
-import pandas as pd
+import pickle
+file = open('logistic_regression.pyc', 'rb')
+lr = pickle.load(file)
+file.close()
 
-result = pd.read_csv('result_films.csv', encoding = "ISO-8859-1")
+file = open('multilabel_binarizer.pyc', 'rb')
+multilabel_binarizer = pickle.load(file)
+file.close()
+
+file = open('vectorizer.pyc', 'rb')
+vectorizer = pickle.load(file)
+file.close()
